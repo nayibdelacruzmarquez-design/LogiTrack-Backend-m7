@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from src.auth.dependencies import RoleChecker
 from src.config.database import get_db
 from src.models import Driver
 from src.schemas.fleet import DriverCreate, DriverResponse
@@ -11,7 +12,11 @@ router = APIRouter()
 
 
 @router.post("/", response_model=DriverResponse, status_code=status.HTTP_201_CREATED)
-async def create_driver(driver_in: DriverCreate, db: AsyncSession = Depends(get_db)):
+async def create_driver(
+    driver_in: DriverCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(RoleChecker(["Admin", "Operador", "Cliente"]))
+):
     new_driver = Driver(
         full_name=driver_in.full_name,
         email=driver_in.email,
@@ -37,5 +42,8 @@ async def get_driver(driver_id: int, db: AsyncSession = Depends(get_db)):
     result = await db.execute(stmt)
     driver = result.scalar_one_or_none()
     if not driver:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conductor no encontrado")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Conductor no encontrado"
+        )
     return driver

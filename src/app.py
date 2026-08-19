@@ -2,7 +2,6 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.openapi.utils import get_openapi
 
 # Importación del inicializador de BD desde config.database
 from src.config.database import init_db
@@ -41,32 +40,6 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan
 )
-
-
-# Habilitación global del esquema de autenticación Bearer JWT para Swagger UI
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        description=app.description,
-        routes=app.routes,
-    )
-    openapi_schema["components"]["securitySchemes"] = {
-        "BearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-        }
-    }
-    # Aplica el candado de seguridad globalmente en la interfaz
-    openapi_schema["security"] = [{"BearerAuth": []}]
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
-
-
-app.openapi = custom_openapi
 
 # Configuración de CORS
 app.add_middleware(

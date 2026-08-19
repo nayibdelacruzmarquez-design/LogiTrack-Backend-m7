@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+from src.auth.dependencies import get_current_user  # 🔒 Autenticación JWT
 from src.config.database import get_db
 from src.models import Vehicle
 from src.schemas.fleet import VehicleCreate, VehicleResponse
@@ -11,7 +12,11 @@ router = APIRouter()
 
 
 @router.post("/", response_model=VehicleResponse, status_code=status.HTTP_201_CREATED)
-async def create_vehicle(vehicle_in: VehicleCreate, db: AsyncSession = Depends(get_db)):
+async def create_vehicle(
+    vehicle_in: VehicleCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)  # 🔒 Activa el candado en POST
+):
     new_vehicle = Vehicle(
         plate=vehicle_in.plate,
         model=vehicle_in.model,
@@ -24,14 +29,21 @@ async def create_vehicle(vehicle_in: VehicleCreate, db: AsyncSession = Depends(g
 
 
 @router.get("/", response_model=List[VehicleResponse])
-async def list_vehicles(db: AsyncSession = Depends(get_db)):
+async def list_vehicles(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)  # 🔒 Activa el candado en GET
+):
     stmt = select(Vehicle)
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)
-async def get_vehicle(vehicle_id: int, db: AsyncSession = Depends(get_db)):
+async def get_vehicle(
+    vehicle_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)  # 🔒 Activa el candado en GET
+):
     stmt = select(Vehicle).where(Vehicle.id == vehicle_id)
     result = await db.execute(stmt)
     vehicle = result.scalar_one_or_none()
