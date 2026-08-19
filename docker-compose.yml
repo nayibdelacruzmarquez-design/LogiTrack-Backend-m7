@@ -1,0 +1,80 @@
+services:
+  # 1. Base de datos PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: logitrack_db
+    restart: always
+    environment:
+      POSTGRES_DB: logitrack_db
+      POSTGRES_USER: logitrack_user
+      POSTGRES_PASSWORD: logitrack_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U logitrack_user -d logitrack_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis (Broker para Celery / Cache)
+  redis:
+    image: redis:7-alpine
+    container_name: logitrack_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Aplicación Backend (FastAPI)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logitrack_api
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://logitrack_user:logitrack_password@db:5432/logitrack_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  # 4. Celery Worker (Tareas en segundo plano)
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logitrack_worker
+    restart: always
+    command: celery -A src.services.celery_app.celery_app worker --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://logitrack_user:logitrack_password@db:5432/logitrack_db
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+
+  # 5. Reverse Proxy (Nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: logitrack_nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
