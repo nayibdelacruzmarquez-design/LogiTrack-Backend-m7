@@ -18,3 +18,4 @@ alembic
 psycopg2-binary
 aiosqlite
 python-multipart
+bcrypt

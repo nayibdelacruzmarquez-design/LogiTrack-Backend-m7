@@ -1,5 +1,6 @@
-from sqlalchemy import Boolean, Column, ForeignKey, String, Table
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.config.database import Base
 
 # Tabla intermedia Muchos a Muchos: Clientes <-> Ubicaciones
@@ -22,11 +23,11 @@ client_locations = Table(
 class Client(Base):
   __tablename__ = "clients"
 
-  id: Mapped[int] = mapped_column(primary_key=True, index=True)
-  name: Mapped[str] = mapped_column(String(100), nullable=False)
-  email: Mapped[str] = mapped_column(
-      String(100), unique=True, index=True, nullable=False
-  )
+  id = Column(Integer, primary_key=True)
+  name = Column(String)
+  email = Column(String, unique=True)
+  phone = Column(String)
+  hashed_password = Column(String)
 
   # Uno a Muchos con Shipments
   shipments: Mapped[list["Shipment"]] = relationship(back_populates="client")

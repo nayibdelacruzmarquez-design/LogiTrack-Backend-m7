@@ -2,9 +2,13 @@ import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+
+# Importación del inicializador de BD desde config.database
+from src.config.database import init_db
 from src.routes import auth, drivers, shipments, vehicles
 
-# Configuración básica de Logging (para auditoría y evidencia)
+# Configuración básica de Logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -15,15 +19,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("logitrack")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Evento al iniciar la aplicación
+    # Evento al iniciar la aplicación: Crear tablas en la BD si no existen
     logger.info("Iniciando LogiTrack API v1.0.0...")
+    await init_db()
+    logger.info("Tablas de la base de datos verificadas / creadas correctamente.")
     yield
     # Evento al apagar la aplicación
     logger.info("Apagando servicio LogiTrack API...")
 
-# Instancia principal de la aplicación FastAPI
+
+# Instancia principal de FastAPI
 app = FastAPI(
     title="LogiTrack API",
     version="1.0.0",
@@ -34,10 +42,36 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configuración del Middleware de CORS (Seguridad Módulo 7.5)
+
+# Habilitación global del esquema de autenticación Bearer JWT para Swagger UI
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+        }
+    }
+    # Aplica el candado de seguridad globalmente en la interfaz
+    openapi_schema["security"] = [{"BearerAuth": []}]
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
+
+# Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción se restrinja a dominios específicos
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,25 +83,19 @@ app.include_router(shipments.router, prefix="/api/v1/shipments", tags=["Envíos"
 app.include_router(vehicles.router, prefix="/api/v1/vehicles", tags=["Vehículos"])
 app.include_router(drivers.router, prefix="/api/v1/drivers", tags=["Conductores"])
 
-# Endpoint de Verificación de Salud
+
+# Endpoints base
 @app.get("/health", tags=["Salud"])
 async def health_check():
-    """
-    Endpoint de comprobación de salud del servidor.
-    Retorna el estado operativo y versión del servicio.
-    """
     return {
         "status": "ok",
         "service": "LogiTrack Backend",
         "version": "1.0.0"
     }
 
-# Endpoint Raíz de Bienvenida
+
 @app.get("/", tags=["Raíz"])
 async def root():
-    """
-    Ruta principal con accesos rápidos a la documentación.
-    """
     return {
         "message": "Bienvenido a LogiTrack API",
         "docs": "/docs",
