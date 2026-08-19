@@ -2,6 +2,7 @@
 
 **Alumno:** Ing. Nayib de la Cruz Márquez  
 **Repositorio:** LogiTrack_Modulo7_DeLaCruzNayib  
+**Link video defenza:** [https://drive.google.com/file/d/1Wb_UhZH2CfMM5n0rhCDOU0pPfPqW8cq0/view?usp=drive_link](https://drive.google.com/file/d/1Wb_UhZH2CfMM5n0rhCDOU0pPfPqW8cq0/view?usp=drive_link)
 
 Sistema de backend para gestión de envíos, inventario y procesamiento asíncrono de reportes logísticos construido con FastAPI, PostgreSQL, Redis, Celery y Nginx.
 
