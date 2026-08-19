@@ -1,32 +1,39 @@
-from sqlalchemy import Float, ForeignKey, String
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from src.config.database import Base
+
+if TYPE_CHECKING:
+    from src.models.fleet import Driver, Vehicle
+    # Si tienes un archivo client.py/user.py cámbialo según corresponda
+    # from src.models.client import Client
 
 
 class Shipment(Base):
-  __tablename__ = "shipments"
+    __tablename__ = "shipments"
 
-  id: Mapped[int] = mapped_column(primary_key=True, index=True)
-  tracking_number: Mapped[str] = mapped_column(
-      String(50), unique=True, index=True
-  )
-  status: Mapped[str] = mapped_column(String(30), default="PENDING")
-  weight: Mapped[float] = mapped_column(Float, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    tracking_number: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
 
-  # Claves Foráneas
-  client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"))
-  origin_location_id: Mapped[int] = mapped_column(ForeignKey("locations.id"))
-  destination_location_id: Mapped[int] = mapped_column(
-      ForeignKey("locations.id")
-  )
-  vehicle_id: Mapped[int | None] = mapped_column(
-      ForeignKey("vehicles.id"), nullable=True
-  )
-  driver_id: Mapped[int | None] = mapped_column(
-      ForeignKey("drivers.id"), nullable=True
-  )
+    # Campos de direcciones y peso
+    origin_address: Mapped[str] = mapped_column(String(255), nullable=False)
+    destination_address: Mapped[str] = mapped_column(String(255), nullable=False)
+    weight_kg: Mapped[float] = mapped_column(Float, nullable=False)
 
-  # Relaciones ORM
-  client: Mapped["Client"] = relationship(back_populates="shipments")
-  vehicle: Mapped["Vehicle"] = relationship(back_populates="shipments")
-  driver: Mapped["Driver"] = relationship(back_populates="shipments")
+    # Claves Foráneas (Incluso client_id que pedía la relación)
+    client_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("clients.id", ondelete="SET NULL"),
+                                                     nullable=True)
+    driver_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("drivers.id", ondelete="SET NULL"),
+                                                     nullable=True)
+    vehicle_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vehicles.id", ondelete="SET NULL"),
+                                                      nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    # Relaciones ORM
+    client = relationship("Client", back_populates="shipments")
+    driver = relationship("Driver", back_populates="shipments")
+    vehicle = relationship("Vehicle", back_populates="shipments")
