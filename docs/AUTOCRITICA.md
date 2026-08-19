@@ -1,0 +1,10 @@
+# 4. Auto-crítica y Reflexión Técnica
+
+### Arquitectura y decisiones técnicas
+Para el backend de **LogiTrack** se seleccionó un patrón de **Monolito Modular** construido con el framework **FastAPI**. Esta elección responde a la necesidad de gestionar un dominio logístico con alto volumen de operaciones I/O de manera eficiente, evitando la complejidad operacional temprana de una arquitectura de microservicios. FastAPI aprovecha la asincronía nativa de Python mediante ASGI, `asyncpg` y `SQLAlchemy`, logrando un elevado rendimiento en peticiones concurrentes con una huella ligera de memoria. Como *trade-off*, existe un acoplamiento en el despliegue del núcleo, el cual fue mitigado aplicando una clara separación de responsabilidades por capas (rutas, servicios, modelos y esquemas).
+
+### Seguridad y gestión de tareas asíncronas
+La autenticación y autorización se implementaron mediante tokens **JWT** (*OAuth2 con Password Flow*) y un algoritmo de *hashing* seguro (**Bcrypt**) para las credenciales. Para desacoplar tareas pesadas —tales como la generación de reportes logísticos o notificaciones— se integró **Celery** con **Redis** como broker de mensajería. Frente al *OWASP Top 10*, se mitigó la *Inyección SQL* mediante el uso exclusivo del ORM con consultas parametrizadas, el *Broken Access Control* a través de middleware de control de acceso basado en roles (RBAC), y la *Insecure Deserialization* mediante validación estricta del tipado de datos con **Pydantic**.
+
+### Despliegue y observabilidad
+La estrategia de contenerización utilizó una imagen `Dockerfile` basada en *multi-stage builds* sobre Debian Slim, minimizando el tamaño final y ejecutando el servicio bajo un usuario sin privilegios (`appuser`). El entorno de producción utiliza **Uvicorn** orquestado por un proxy inverso **Nginx** en el puerto 80. Para el monitoreo en producción, las métricas y logs críticos identificados incluyen la latencia por endpoint (códigos HTTP 2xx/5xx), el rendimiento de ejecución de colas en Celery y la tasa de conexiones activas hacia PostgreSQL.
