@@ -8,6 +8,8 @@ from src.auth.dependencies import get_current_user  # 🔒 Autenticación JWT
 from src.config.database import get_db
 from src.models.shipment import Shipment
 from src.schemas.shipment import ShipmentCreate, ShipmentResponse
+from src.services.route_optimizer import calculate_optimal_route  # 🚀 Tarea asíncrona pesada
+from src.services.notifications import send_shipment_notification  # 🚀 Notificaciones en segundo plano
 
 router = APIRouter(tags=["Envíos"])
 
@@ -32,6 +34,22 @@ async def create_shipment(
 
     await db.commit()
     await db.refresh(db_shipment)
+
+    # 🚀 Disparos de tareas asíncronas en Celery (No bloquean la API):
+    try:
+        calculate_optimal_route.delay(
+            shipment_id=db_shipment.id,
+            origin=db_shipment.origin_address,
+            destination=db_shipment.destination_address
+        )
+        send_shipment_notification.delay(
+            shipment_id=db_shipment.id,
+            client_email=getattr(current_user, "email", "cliente@logitrack.com")
+        )
+    except Exception as e:
+        # Si Redis no está encendido al probar, el flujo de la API no se rompe
+        print(f"Advertencia: No se pudo encolar la tarea asíncrona ({e})")
+
     return db_shipment
 
 
