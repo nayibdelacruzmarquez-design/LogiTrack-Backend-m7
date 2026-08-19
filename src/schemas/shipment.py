@@ -1,36 +1,23 @@
-from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field
-
-
-class ShipmentStatus(str, Enum):
-    PENDING = "PENDING"
-    IN_TRANSIT = "IN_TRANSIT"
-    DELIVERED = "DELIVERED"
-    CANCELLED = "CANCELLED"
-
+from pydantic import BaseModel, ConfigDict, Field
 
 # ==========================================
 # SCHEMAS DE ENVÍOS (SHIPMENTS)
 # ==========================================
 
 class ShipmentBase(BaseModel):
-    tracking_number: str = Field(..., example="TRK-1002")
-    origin_address: str = Field(..., example="Av. Insurgentes Sur 1602, CDMX")
-    destination_address: str = Field(..., example="Av. Constitución 400, Monterrey")
-    weight_kg: float = Field(..., gt=0, example=150.5)
-
+    tracking_number: str = Field(..., json_schema_extra={"example": "TRK-1002"})
+    origin_address: str = Field(..., json_schema_extra={"example": "Av. Insurgentes Sur 1602, CDMX"})
+    destination_address: str = Field(..., json_schema_extra={"example": "Av. Constitución 400, Monterrey"})
+    weight_kg: float = Field(..., gt=0, json_schema_extra={"example": 150.5})
 
 class ShipmentCreate(ShipmentBase):
-    driver_id: Optional[int] = None
-    vehicle_id: Optional[int] = None
-
+    pass
 
 class ShipmentResponse(ShipmentBase):
     id: int
-    status: ShipmentStatus
+    status: str
     driver_id: Optional[int] = None
     vehicle_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
