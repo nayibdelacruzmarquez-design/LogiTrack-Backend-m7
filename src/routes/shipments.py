@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.config.database import get_db
 from src.models.shipment import Shipment
@@ -22,5 +23,16 @@ async def create_shipment(shipment_in: ShipmentCreate, db: AsyncSession = Depend
 
 @router.get("/", response_model=List[ShipmentResponse])
 async def get_shipments(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Shipment).offset(skip).limit(limit))
+    # Carga optimizada de relaciones para prevenir N+1
+    stmt = (
+        select(Shipment)
+        .options(
+            selectinload(Shipment.driver),
+            selectinload(Shipment.vehicle),
+            selectinload(Shipment.client)
+        )
+        .offset(skip)
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
     return result.scalars().all()

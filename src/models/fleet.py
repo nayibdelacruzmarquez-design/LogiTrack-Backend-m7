@@ -1,7 +1,11 @@
+from typing import TYPE_CHECKING
 from sqlalchemy import Boolean, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.config.database import Base
+
+if TYPE_CHECKING:
+    from src.models.shipment import Shipment
 
 
 class Driver(Base):
@@ -14,7 +18,7 @@ class Driver(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relación Uno a Muchos con Shipments resolviendo por nombre de clase (String)
-    shipments = relationship("Shipment", back_populates="driver")
+    shipments: Mapped[list["Shipment"]] = relationship("Shipment", back_populates="driver")
 
 
 class Vehicle(Base):
@@ -26,4 +30,4 @@ class Vehicle(Base):
     capacity_kg: Mapped[float] = mapped_column(Float, nullable=False)
 
     # Relación Uno a Muchos con Shipments resolviendo por nombre de clase (String)
-    shipments = relationship("Shipment", back_populates="vehicle")
+    shipments: Mapped[list["Shipment"]] = relationship("Shipment", back_populates="vehicle")
