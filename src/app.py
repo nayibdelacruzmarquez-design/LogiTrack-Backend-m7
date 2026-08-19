@@ -1,4 +1,6 @@
 import logging
+import json
+import sys
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,30 +9,50 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.config.database import init_db
 from src.routes import auth, drivers, shipments, vehicles
 
-# Configuración básica de Logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("evidencia/app.log", encoding="utf-8") if False else logging.NullHandler()
-    ]
-)
-logger = logging.getLogger("logitrack")
+
+# ==========================================
+# CONFIGURACIÓN DE LOGGING ESTRUCTURADO (JSON)
+# ==========================================
+class StructuredJSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "time": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "module": record.module,
+            "message": record.getMessage()
+        }
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record, ensure_ascii=False)
 
 
+def setup_logger():
+    logger = logging.getLogger("logitrack")
+    logger.setLevel(logging.INFO)
+
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(StructuredJSONFormatter())
+        logger.addHandler(handler)
+
+    return logger
+
+
+logger = setup_logger()
+
+
+# ==========================================
+# LIFESPAN Y APLICACIÓN
+# ==========================================
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Evento al iniciar la aplicación: Crear tablas en la BD si no existen
     logger.info("Iniciando LogiTrack API v1.0.0...")
     await init_db()
     logger.info("Tablas de la base de datos verificadas / creadas correctamente.")
     yield
-    # Evento al apagar la aplicación
     logger.info("Apagando servicio LogiTrack API...")
 
 
-# Instancia principal de FastAPI
 app = FastAPI(
     title="LogiTrack API",
     version="1.0.0",

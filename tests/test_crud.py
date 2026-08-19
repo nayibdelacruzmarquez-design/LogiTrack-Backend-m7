@@ -56,24 +56,36 @@ async def test_crud_flow(client):
     ship_list = await client.get("/api/v1/shipments/", headers=headers)
     assert ship_list.status_code == 200
 
-    @pytest.mark.asyncio
-    async def test_shipment_not_found(client):
-        # Probar 404 en envío inexistente para subir cobertura en routes/shipments.py
-        response = await client.get("/api/v1/shipments/999999")
-        assert response.status_code == 404
 
-    @pytest.mark.asyncio
-    async def test_login_wrong_password(client):
-        # Probar contraseña incorrecta de un usuario real para subir cobertura en routes/auth.py
-        user_payload = {
-            "name": "Usuario Auth Test",
-            "email": "auth_test@logitrack.com",
-            "password": "PasswordCorrecta123"
-        }
-        await client.post("/api/v1/auth/register", json=user_payload)
+@pytest.mark.asyncio
+async def test_shipment_not_found(client):
+    user_payload = {
+        "name": "User 404",
+        "email": "u404@logitrack.com",
+        "password": "Password123"
+    }
+    await client.post("/api/v1/auth/register", json=user_payload)
+    login_res = await client.post(
+        "/api/v1/auth/login",
+        data={"username": "u404@logitrack.com", "password": "Password123"}
+    )
+    headers = {"Authorization": f"Bearer {login_res.json()['access_token']}"}
 
-        login_res = await client.post(
-            "/api/v1/auth/login",
-            data={"username": "auth_test@logitrack.com", "password": "PasswordIncorrecta"}
-        )
-        assert login_res.status_code == 401
+    response = await client.get("/api/v1/shipments/999999", headers=headers)
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_login_wrong_password(client):
+    user_payload = {
+        "name": "Usuario Auth Test",
+        "email": "auth_test@logitrack.com",
+        "password": "PasswordCorrecta123"
+    }
+    await client.post("/api/v1/auth/register", json=user_payload)
+
+    login_res = await client.post(
+        "/api/v1/auth/login",
+        data={"username": "auth_test@logitrack.com", "password": "PasswordIncorrecta"}
+    )
+    assert login_res.status_code == 401
